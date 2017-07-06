@@ -12,60 +12,93 @@ public class MenuImpl : MonoBehaviour, Menu
     public int[] numberOfObject;
     public string[] titles;
     public Text title;
-    public GameObject tutorial;
 
-    private int currentPosition = 0;
+    private int currentHorizontalIndex = 0;
+    private int currentVerticalIndex = 0;
 
     private bool isMovingLeft = false;
     private bool isMovingRight = false;
+    private bool isMovingUp = false;
+    private bool isMovingDown = false;
     private float menuSpeed = 2f;
-    private float menuPositionXOffset;
+    private float initialHorizontalMenuPosition;
+    private float initialVerticalMenuPosition;
+    public float distanceBetweenMenuObjects = 0.2f;
 
     public void Start()
     {
-        menuPositionXOffset = objectMenu.transform.localPosition.x;
-        title.text = createTitle(currentPosition);
+        initialHorizontalMenuPosition = objectMenu.transform.localPosition.x;
+        initialVerticalMenuPosition = objectMenu.transform.localPosition.y;
+        title.text = createTitle(currentHorizontalIndex);
         title.enabled = false;
     }
 
     public void Update()
     {
-      moveMenu();
+        moveMenu();
     }
 
-    public void enable() {
+    public void enable()
+    {
         //Debug.Log("Menu enabled");
         objectMenu.SetActive(true);
         title.enabled = true;
-
-        if (tutorial != null)
-        {
-            tutorial.GetComponent<Tutorial>().onShowMenu();
-        }
     }
 
-    public void disable() {
+    public void disable()
+    {
         //Debug.Log("Menu disabled");
         objectMenu.SetActive(false);
         title.enabled = false;
     }
 
-    public void navigateUp() {
+    public void navigateUp()
+    {
         //Debug.Log("Menu up");
-    }
-
-    public void navigateDown() {
-        //Debug.Log("Menu down");
-    }
-
-    public void navigateLeft() {
-        //Debug.Log("Menu left");
-        if (!isMovingRight)
+        if (!isMoving())
         {
-            currentPosition -= 1;
-            if (currentPosition < 0)
+            currentVerticalIndex += 1;
+            if (currentVerticalIndex > objectList.Length - 1)
             {
-                currentPosition = 0;
+                currentVerticalIndex = objectList.Length - 1;
+            }
+            else
+            {
+                isMovingUp = true;
+                isMovingDown = false;
+            }
+        }
+        //FIXME title.text = createTitle(currentHorizontalIndex);
+    }
+
+    public void navigateDown()
+    {
+        //Debug.Log("Menu down");
+        if (!isMoving())
+        {
+            currentVerticalIndex -= 1;
+            if (currentVerticalIndex < 0)
+            {
+                currentVerticalIndex = 0;
+            }
+            else
+            {
+                isMovingUp = false;
+                isMovingDown = true;
+            }
+        }
+        //FIXME title.text = createTitle(currentHorizontalIndex);
+    }
+
+    public void navigateLeft()
+    {
+        //Debug.Log("Menu left");
+        if (!isMoving())
+        {
+            currentHorizontalIndex -= 1;
+            if (currentHorizontalIndex < 0)
+            {
+                currentHorizontalIndex = 0;
             }
             else
             {
@@ -73,22 +106,18 @@ public class MenuImpl : MonoBehaviour, Menu
                 isMovingRight = true;
             }
         }
-        title.text = createTitle(currentPosition);
-
-        if (tutorial != null)
-        {
-            tutorial.GetComponent<Tutorial>().onPressLeftOrRight();
-        }
+        title.text = createTitle(currentHorizontalIndex);
     }
 
-    public void navigateRight() {
+    public void navigateRight()
+    {
         //Debug.Log("Menu right");
-        if (!isMovingLeft)
+        if (!isMoving())
         {
-            currentPosition += 1;
-            if (currentPosition > objectList.Length - 1)
+            currentHorizontalIndex += 1;
+            if (currentHorizontalIndex > objectList.Length - 1)
             {
-                currentPosition = objectList.Length - 1;
+                currentHorizontalIndex = objectList.Length - 1;
             }
             else
             {
@@ -96,30 +125,27 @@ public class MenuImpl : MonoBehaviour, Menu
                 isMovingRight = false;
             }
         }
-        title.text = createTitle(currentPosition);
+        title.text = createTitle(currentHorizontalIndex);
 
-        if (tutorial != null)
-        {
-            tutorial.GetComponent<Tutorial>().onPressLeftOrRight();
-        }
     }
 
-    public void navigateSelect() {
+    public void navigateSelect()
+    {
         //Debug.Log("Menu selected " + currentPosition);
 
         //Spawn a new object instance
-        int count = numberOfObject[currentPosition];
+        int count = numberOfObject[currentHorizontalIndex];
         if (count > 0)
         {
-            GameObject newObject = Instantiate(objectList[currentPosition], spawnPosition.transform.position, objectMenuList[currentPosition].transform.rotation);
+            GameObject newObject = Instantiate(objectList[currentHorizontalIndex], spawnPosition.transform.position, objectMenuList[currentHorizontalIndex].transform.rotation);
             newObject.SetActive(true);
 
-            print("before " + count + ":"+ numberOfObject[currentPosition]);
-            
-            numberOfObject[currentPosition] = count - 1;
+            print("before " + count + ":" + numberOfObject[currentHorizontalIndex]);
 
-            print("after " + count + ":" + numberOfObject[currentPosition]);
-            title.text = createTitle(currentPosition);
+            numberOfObject[currentHorizontalIndex] = count - 1;
+
+            print("after " + count + ":" + numberOfObject[currentHorizontalIndex]);
+            title.text = createTitle(currentHorizontalIndex);
         }
     }
 
@@ -128,35 +154,81 @@ public class MenuImpl : MonoBehaviour, Menu
         if (isMovingLeft)
         {
             objectMenu.transform.Translate(Vector2.left * menuSpeed * Time.deltaTime);
-            if (menuReachedNextPosition(objectMenu.transform.localPosition.x))
+            if (menuReachedNextHorizontalPosition(currentHorizontalIndex, objectMenu.transform.localPosition.x, initialHorizontalMenuPosition))
             {
                 isMovingLeft = false;
             }
-        } else if (isMovingRight)
+        }
+        else if (isMovingRight)
         {
             objectMenu.transform.Translate(Vector2.right * menuSpeed * Time.deltaTime);
-            if (menuReachedNextPosition(objectMenu.transform.localPosition.x))
+            if (menuReachedNextHorizontalPosition(currentHorizontalIndex, objectMenu.transform.localPosition.x, initialHorizontalMenuPosition))
             {
                 isMovingRight = false;
             }
         }
+        else if (isMovingUp)
+        {
+            objectMenu.transform.Translate(Vector2.down * menuSpeed * Time.deltaTime);
+            if (menuReachedNextVerticalPosition(currentVerticalIndex, objectMenu.transform.localPosition.y, initialVerticalMenuPosition))
+            {
+                isMovingUp = false;
+            }
+        }
+        else if (isMovingDown)
+        {
+            objectMenu.transform.Translate(Vector2.up * menuSpeed * Time.deltaTime);
+            if (menuReachedNextVerticalPosition(currentVerticalIndex, objectMenu.transform.localPosition.y, initialVerticalMenuPosition))
+            {
+                isMovingDown = false;
+            }
+        }
     }
-    
+
     //Return true if the menuObject as reached the next position in the menu
-    private bool menuReachedNextPosition(float xPosition)
+    private bool menuReachedNextHorizontalPosition(int index, float currentPosition, float initialPosition)
     {
-        float currentMenuObjectPosition = -(xPosition - menuPositionXOffset);
-        float stopAt = currentPosition * menuPositionXOffset;
-        //Debug.Log("Menu " + currentMenuObjectPosition + " " + currentPosition + " " + stopAt);
-        if (isMovingLeft) {
-            return (currentMenuObjectPosition >= stopAt);
-        } else {
-            return (currentMenuObjectPosition <= stopAt);
+        if (isMovingLeft )
+        {
+            float currentMenuObjectPosition = currentPosition - initialPosition;
+            float target = -(index * distanceBetweenMenuObjects);
+            //Debug.Log("left " + currentMenuObjectPosition + " " + xPosition + " " + target);
+            return currentMenuObjectPosition <= target;
+        }
+        else
+        {
+            float currentMenuObjectPosition = currentPosition - initialPosition;
+            float target = -(index * distanceBetweenMenuObjects);
+            //Debug.Log("Right " + currentMenuObjectPosition + " " + xPosition + " " + target);
+            return currentMenuObjectPosition >= target;
+        }
+    }
+
+    private bool menuReachedNextVerticalPosition(int index, float currentPosition, float initialPosition)
+    {
+        if (isMovingDown)
+        {
+            float currentMenuObjectPosition = currentPosition - initialPosition;
+            float target = -(index * distanceBetweenMenuObjects);
+            Debug.Log("down " + currentMenuObjectPosition + " " + currentPosition + " " + target);
+            return currentMenuObjectPosition >= target;
+        }
+        else
+        {
+            float currentMenuObjectPosition = currentPosition - initialPosition;
+            float target = -(index * distanceBetweenMenuObjects);
+            Debug.Log("up " + currentMenuObjectPosition + " " + currentPosition + " " + target);
+            return currentMenuObjectPosition <= target;
         }
     }
 
     private string createTitle(int currentIndex)
     {
         return titles[currentIndex] + "\nx" + numberOfObject[currentIndex];
+    }
+
+    private bool isMoving()
+    {
+        return isMovingDown || isMovingLeft || isMovingRight || isMovingUp;
     }
 }
